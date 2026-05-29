@@ -97,3 +97,8 @@ if ($tabIdx -lt 0) {
 
 $tabFile = if ($Session) { "$env:TEMP\claude-wt-tab-$Session.json" } else { "$env:TEMP\claude-wt-tab.json" }
 @{ title = $savedTitle; index = $tabIdx; wtPid = $wtProc.Id } | ConvertTo-Json | Out-File $tabFile -Encoding UTF8
+
+# Clean up session files older than 7 days
+Get-ChildItem "$env:TEMP\claude-wt-tab-*.json" -EA SilentlyContinue |
+    Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-7) } |
+    Remove-Item -Force -EA SilentlyContinue

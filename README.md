@@ -10,6 +10,8 @@ Windows 11 Toast notifications for [Claude Code](https://claude.ai/code).
 - **Action required** — urgent toast (stays until dismissed) when Claude needs your approval
 - **Click to focus** — clicking the toast brings the correct Windows Terminal tab back to front
 - **Context in notification** — shows the last assistant message, project name, and git branch
+- **Multi-session safe** — multiple Claude sessions run independently; each toast targets its own tab
+- **Multi-window support** — works correctly when multiple Windows Terminal windows are open
 
 ## Requirements
 
@@ -50,7 +52,7 @@ This removes the hooks from `settings.json` and unregisters the protocol. Hook s
 Claude Code finishes a turn
   └─ Stop hook fires → notify-stop.sh
        ├─ Reads transcript for last assistant message + cwd/branch
-       ├─ Saves current Windows Terminal tab (title + index)
+       ├─ Saves current Windows Terminal tab (title + index + window PID)
        └─ Shows Toast (25 s, Claude icon, attribution)
 
 Claude Code needs attention
@@ -61,6 +63,7 @@ Claude Code needs attention
 User clicks Toast
   └─ claude-code:// protocol → focus-launcher.vbs (no CMD flash)
        └─ focus-window.ps1
+            ├─ Looks up saved window PID to target the correct WT instance
             ├─ Brings Windows Terminal to front (preserves maximized state)
             └─ Switches to the saved tab (fuzzy title match + index fallback)
 ```
@@ -68,7 +71,7 @@ User clicks Toast
 ## Files
 
 | File | Purpose |
-|------|---------|
+|------|-------|
 | `install.ps1` | One-click installer / uninstaller |
 | `hooks/notify.ps1` | Core Toast script (title, message, icon, attribution, scenario, duration) |
 | `hooks/notify-stop.sh` | Stop hook entry point |

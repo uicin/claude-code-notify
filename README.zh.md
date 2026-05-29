@@ -10,6 +10,8 @@
 - **需要确认通知** — Claude 等待操作批准时弹出紧急 Toast，不自动消失
 - **点击跳回终端** — 点击通知自动聚焦到对应的 Windows Terminal 标签页
 - **上下文信息** — 通知正文显示最后一条回复摘要，底部显示项目名和 Git 分支
+- **多 Session 隔离** — 多个 Claude 会话同时运行互不干扰，各自 Toast 只跳回自己的标签页
+- **多窗口支持** — 打开多个 Windows Terminal 窗口时也能准确定位到正确窗口
 
 ## 环境要求
 
@@ -50,7 +52,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -Uninstall
 Claude Code 完成一轮回答
   └─ Stop hook 触发 → notify-stop.sh
        ├─ 从 transcript 读取最后一条回复 + cwd / 分支
-       ├─ 保存当前 Windows Terminal 标签页（标题 + 序号）
+       ├─ 保存当前 Windows Terminal 标签页（标题 + 序号 + 窗口 PID）
        └─ 弹出 Toast（25 秒，带 Claude 图标和项目信息）
 
 Claude Code 需要确认
@@ -61,8 +63,9 @@ Claude Code 需要确认
 用户点击 Toast
   └─ claude-code:// 协议 → focus-launcher.vbs（无 CMD 闪烁）
        └─ focus-window.ps1
+            ├─ 根据保存的窗口 PID 定位正确的 WT 实例
             ├─ 将 Windows Terminal 窗口置于前台（保持最大化状态）
-            └─ 切换到保存的标签页（先模糊匹配标题，失败则按序号兜底）
+            └─ 切换到保存的标签页（先模糊匹配标题，失败则按序号兄底）
 ```
 
 ## 文件说明
