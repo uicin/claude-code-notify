@@ -54,7 +54,9 @@ function Select-Tab($tab) {
 }
 
 # Strip leading spinner/status chars for fuzzy match
-$normalize = { param($s) ($s -replace '^[\s\x{2800}-\x{28FF}✓✗]+\s*', '').Trim() }
+# Use literal Unicode chars (⠀-⣿ = braille range U+2800-U+28FF, ✓✗✳ = status icons)
+# \x{HHHH} range syntax fails in .NET regex character classes — literal chars work correctly
+$normalize = { param($s) ($s -replace '^[\s⠀-⣿✓✗✳]+\s*', '').Trim() }
 $savedNorm  = & $normalize $info.title
 
 # Pass 1: fuzzy title match
