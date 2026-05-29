@@ -24,7 +24,7 @@ $settingsFile = "$claudeDir\settings.json"
 if (-not $InstallDir) { $InstallDir = "$claudeDir\hooks" }
 $InstallDir  = $InstallDir.TrimEnd('\\')
 
-# ── Uninstall ────────────────────────────────────────────────────────────────
+# ── Uninstall ──────────────────────────────────────────────────────────────────────────────
 if ($Uninstall) {
     Write-Host "Removing claude-code-notify..."
     # Remove protocol
@@ -41,7 +41,7 @@ if ($Uninstall) {
     exit 0
 }
 
-# ── Install ───────────────────────────────────────────────────────────────────
+# ── Install ─────────────────────────────────────────────────────────────────────────────────
 Write-Host "Installing claude-code-notify to: $InstallDir"
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 

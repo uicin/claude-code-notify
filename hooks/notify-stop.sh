@@ -8,11 +8,7 @@ d = json.load(sys.stdin)
 sys.exit(1 if d.get('stop_hook_active') else 0)
 " || exit 0
 
-# Resolve hooks directory as Windows path (works in Git Bash / MSYS2)
-_dir="$(dirname "$0")"
-HOOKS_WIN=$(cygpath -w "$_dir" 2>/dev/null || echo "$_dir" | sed 's|/\([A-Za-z]\)/|\1:/|;s|/|\\|g')
-
-# Extract last assistant message + project/branch attribution from transcript
+# Extract message + attribution (project name, git branch) from transcript
 echo "$INPUT" | python -c "
 import sys, json, os
 
@@ -29,10 +25,12 @@ try:
         for line in reversed(lines):
             try:
                 obj = json.loads(line)
+                # pick up cwd/gitBranch from any recent entry
                 if not cwd and obj.get('cwd'):
                     cwd = obj['cwd']
                 if not git_branch and obj.get('gitBranch') is not None:
                     git_branch = obj['gitBranch']
+                # pick up last assistant text
                 if not last_text and obj.get('type') == 'assistant':
                     content = obj.get('message', {}).get('content', [])
                     if isinstance(content, list):
@@ -46,7 +44,7 @@ try:
                 pass
 
     if not last_text:
-        last_text = 'Done'
+        last_text = '回答已完成，可以回来查看了'
     else:
         text = last_text.replace('\n', ' ')
         last_text = (text[:80] + '...') if len(text) > 80 else text
@@ -64,16 +62,20 @@ try:
 except:
     tmp = os.environ.get('TEMP', '/tmp')
     with open(tmp + '/claude-notify-msg.txt', 'w', encoding='utf-8') as f:
-        f.write('Done')
+        f.write('回答已完成，可以回来查看了')
     open(tmp + '/claude-notify-attr.txt', 'w').close()
 "
 
+_dir="$(dirname "$0")"
+HOOKS_WIN=$(cygpath -w "$_dir" 2>/dev/null || echo "$_dir" | sed 's|/\([A-Za-z]\)/|\1:/|;s|/|\\|g')
+
 powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden \
-  -File "$HOOKS_WIN\\save-tab.ps1"
+  -File "$HOOKS_WIN\\save-tab.ps1" -Session "$WT_SESSION"
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden \
   -File "$HOOKS_WIN\\notify.ps1" \
-  -Title "Claude Code" \
+  -Title "Claude Code 完成" \
   -MessageFile "$TEMP\\claude-notify-msg.txt" \
   -AttributionFile "$TEMP\\claude-notify-attr.txt" \
-  -Duration "long"
+  -Duration "long" \
+  -LaunchUrl "claude-code://focus?s=$WT_SESSION"

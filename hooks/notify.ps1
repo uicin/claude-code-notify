@@ -6,6 +6,7 @@ param(
     [string]$AttributionFile = "",
     [string]$Scenario = "",
     [string]$Duration = "",
+    [string]$LaunchUrl = "claude-code://focus",
     [string]$Action1 = "",
     [string]$Action2 = "",
     [string]$Action1Args = "",
@@ -34,7 +35,7 @@ try {
     $escapedMsg  = [System.Security.SecurityElement]::Escape($Message)
     $escapedAttr = [System.Security.SecurityElement]::Escape($Attribution)
 
-    $iconPath = Join-Path $PSScriptRoot "claude-icon.png"
+    $iconPath = "$PSScriptRoot\claude-icon.png"
     $iconXml  = if (Test-Path $iconPath) { "<image placement='appLogoOverride' src='$iconPath' hint-crop='circle'/>" } else { "" }
     $attrXml  = if ($Attribution) { "<text placement='attribution'>$escapedAttr</text>" } else { "" }
     $scenAttr = if ($Scenario) { "scenario='$Scenario'" } else { "" }
@@ -42,7 +43,7 @@ try {
 
     if ($Action1 -and $Action2) {
         $toastXml = @"
-<toast launch='claude-code://focus' activationType='protocol' $scenAttr $durAttr>
+<toast launch='$LaunchUrl' activationType='protocol' $scenAttr $durAttr>
   <visual>
     <binding template='ToastGeneric'>
       $iconXml
@@ -59,7 +60,7 @@ try {
 "@
     } else {
         $toastXml = @"
-<toast launch='claude-code://focus' activationType='protocol' $scenAttr $durAttr>
+<toast launch='$LaunchUrl' activationType='protocol' $scenAttr $durAttr>
   <visual>
     <binding template='ToastGeneric'>
       $iconXml

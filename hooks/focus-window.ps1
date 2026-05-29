@@ -1,3 +1,5 @@
+param([string]$Url = "")
+
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 Add-Type @"
@@ -7,6 +9,7 @@ public class WinFocus {
     [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
     [DllImport("user32.dll")] public static extern bool GetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
+    [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
     public struct WINDOWPLACEMENT {
         public uint length, flags, showCmd;
         public int ptMinX, ptMinY, ptMaxX, ptMaxY, left, top, right, bottom;
@@ -14,28 +17,29 @@ public class WinFocus {
 }
 "@
 
+[WinFocus]::SetProcessDPIAware() | Out-Null
+
 $proc = Get-Process -Name "WindowsTerminal" -EA SilentlyContinue |
         Sort-Object StartTime -Descending | Select-Object -First 1
 if (-not $proc) { exit 1 }
 
 $hwnd = $proc.MainWindowHandle
-
-# Only restore if minimized — never resize a maximized/normal window
 $wp = New-Object WinFocus+WINDOWPLACEMENT
 $wp.length = [System.Runtime.InteropServices.Marshal]::SizeOf($wp)
 [WinFocus]::GetWindowPlacement($hwnd, [ref]$wp) | Out-Null
-if ($wp.showCmd -eq 2) {
-    [WinFocus]::ShowWindow($hwnd, 9) | Out-Null
-}
+if ($wp.showCmd -eq 2) { [WinFocus]::ShowWindow($hwnd, 9) | Out-Null }
 [WinFocus]::SetForegroundWindow($hwnd) | Out-Null
 
-$info = Get-Content "$env:TEMP\claude-wt-tab.json" -EA SilentlyContinue | ConvertFrom-Json
+$sessionId = if ($Url -match '[?&]s=([^&]+)') { $Matches[1] } else { "" }
+$tabFile   = if ($sessionId) { "$env:TEMP\claude-wt-tab-$sessionId.json" } else { "$env:TEMP\claude-wt-tab.json" }
+
+$info = Get-Content $tabFile -EA SilentlyContinue | ConvertFrom-Json
 if (-not $info) { exit 0 }
 
-Start-Sleep -Milliseconds 200
+Start-Sleep -Milliseconds 300
 
-$root  = [System.Windows.Automation.AutomationElement]::RootElement
-$wtEl  = $root.FindFirst(
+$root = [System.Windows.Automation.AutomationElement]::RootElement
+$wtEl = $root.FindFirst(
     [System.Windows.Automation.TreeScope]::Children,
     (New-Object System.Windows.Automation.PropertyCondition(
         [System.Windows.Automation.AutomationElement]::ProcessIdProperty, $proc.Id)))
@@ -49,13 +53,12 @@ if ($tabs.Count -eq 0) { exit 0 }
 
 function Select-Tab($tab) {
     try { $tab.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select(); return $true } catch {}
-    try { $tab.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke();      return $true } catch {}
+    try { $tab.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); return $true } catch {}
     return $false
 }
 
 # Strip leading spinner/status chars for fuzzy match
-# Use literal Unicode chars (⠀-⣿ = braille range U+2800-U+28FF, ✓✗✳ = status icons)
-# \x{HHHH} range syntax fails in .NET regex character classes — literal chars work correctly
+# Use literal Unicode chars — \x{HHHH} range syntax fails in .NET regex character classes
 $normalize = { param($s) ($s -replace '^[\s⠀-⣿✓✗✳]+\s*', '').Trim() }
 $savedNorm  = & $normalize $info.title
 
