@@ -19,8 +19,18 @@ public class WinFocus {
 
 [WinFocus]::SetProcessDPIAware() | Out-Null
 
-$proc = Get-Process -Name "WindowsTerminal" -EA SilentlyContinue |
-        Sort-Object StartTime -Descending | Select-Object -First 1
+$sessionId = if ($Url -match '[?&]s=([^&]+)') { $Matches[1] } else { "" }
+$tabFile   = if ($sessionId) { "$env:TEMP\claude-wt-tab-$sessionId.json" } else { "$env:TEMP\claude-wt-tab.json" }
+
+$info = Get-Content $tabFile -EA SilentlyContinue | ConvertFrom-Json
+if (-not $info) { exit 0 }
+
+# Find the specific WT that owns this session; fall back to newest
+$proc = if ($info.wtPid) { Get-Process -Id ([int]$info.wtPid) -EA SilentlyContinue | Where-Object { $_.Name -eq "WindowsTerminal" } } else { $null }
+if (-not $proc) {
+    $proc = Get-Process -Name "WindowsTerminal" -EA SilentlyContinue |
+            Sort-Object StartTime -Descending | Select-Object -First 1
+}
 if (-not $proc) { exit 1 }
 
 $hwnd = $proc.MainWindowHandle
@@ -29,12 +39,6 @@ $wp.length = [System.Runtime.InteropServices.Marshal]::SizeOf($wp)
 [WinFocus]::GetWindowPlacement($hwnd, [ref]$wp) | Out-Null
 if ($wp.showCmd -eq 2) { [WinFocus]::ShowWindow($hwnd, 9) | Out-Null }
 [WinFocus]::SetForegroundWindow($hwnd) | Out-Null
-
-$sessionId = if ($Url -match '[?&]s=([^&]+)') { $Matches[1] } else { "" }
-$tabFile   = if ($sessionId) { "$env:TEMP\claude-wt-tab-$sessionId.json" } else { "$env:TEMP\claude-wt-tab.json" }
-
-$info = Get-Content $tabFile -EA SilentlyContinue | ConvertFrom-Json
-if (-not $info) { exit 0 }
 
 Start-Sleep -Milliseconds 300
 

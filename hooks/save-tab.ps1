@@ -25,21 +25,23 @@ public class ProcHelper {
 }
 "@
 
-$wtProc = Get-Process -Name "WindowsTerminal" -EA SilentlyContinue |
-          Sort-Object StartTime -Descending | Select-Object -First 1
-if (-not $wtProc) { exit 0 }
-
-# --- Identify this tab's index via process tree ---
+# --- Identify which WT owns this session via process tree ---
 $map = [ProcHelper]::GetParentMap()
+$wtPids = @{}
+Get-Process -Name "WindowsTerminal" -EA SilentlyContinue | ForEach-Object { $wtPids[[int]$_.Id] = $_ }
+if ($wtPids.Count -eq 0) { exit 0 }
 
-# Walk up from $PID to find the direct child of WT (the "tab shell")
-$cur = [int]$PID; $tabShellPid = 0
+# Walk up from $PID to find the tab shell (direct child of any WT)
+$cur = [int]$PID; $tabShellPid = 0; $wtProc = $null
 for ($i = 0; $i -lt 10; $i++) {
     $parent = 0; if ($map.ContainsKey($cur)) { $parent = $map[$cur] }
-    if ($parent -eq [int]$wtProc.Id) { $tabShellPid = $cur; break }
+    if ($wtPids.ContainsKey($parent)) { $tabShellPid = $cur; $wtProc = $wtPids[$parent]; break }
     if ($parent -le 1) { break }
     $cur = $parent
 }
+
+# Fallback to newest WT if process tree didn't resolve
+if (-not $wtProc) { $wtProc = $wtPids.Values | Sort-Object StartTime -Descending | Select-Object -First 1 }
 
 # Get WT direct children (excluding OpenConsole = console server, not the shell)
 # sorted by start time → position in this list = UIAutomation tab index
@@ -94,4 +96,4 @@ if ($tabIdx -lt 0) {
 }
 
 $tabFile = if ($Session) { "$env:TEMP\claude-wt-tab-$Session.json" } else { "$env:TEMP\claude-wt-tab.json" }
-@{ title = $savedTitle; index = $tabIdx } | ConvertTo-Json | Out-File $tabFile -Encoding UTF8
+@{ title = $savedTitle; index = $tabIdx; wtPid = $wtProc.Id } | ConvertTo-Json | Out-File $tabFile -Encoding UTF8
