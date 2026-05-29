@@ -6,7 +6,7 @@ param(
     [string]$AttributionFile = "",
     [string]$Scenario = "",
     [string]$Duration = "",
-    [string]$LaunchUrl = "claude-code://focus",
+    [string]$LaunchUrl = "",
     [string]$Action1 = "",
     [string]$Action2 = "",
     [string]$Action1Args = "",
@@ -38,12 +38,13 @@ try {
     $iconPath = "$PSScriptRoot\claude-icon.png"
     $iconXml  = if (Test-Path $iconPath) { "<image placement='appLogoOverride' src='$iconPath' hint-crop='circle'/>" } else { "" }
     $attrXml  = if ($Attribution) { "<text placement='attribution'>$escapedAttr</text>" } else { "" }
-    $scenAttr = if ($Scenario) { "scenario='$Scenario'" } else { "" }
-    $durAttr  = if ($Duration) { "duration='$Duration'" } else { "" }
+    $scenAttr  = if ($Scenario)  { "scenario='$Scenario'"   } else { "" }
+    $durAttr   = if ($Duration)  { "duration='$Duration'"   } else { "" }
+    $launchAttr = if ($LaunchUrl) { "launch='$LaunchUrl' activationType='protocol'" } else { "" }
 
     if ($Action1 -and $Action2) {
         $toastXml = @"
-<toast launch='$LaunchUrl' activationType='protocol' $scenAttr $durAttr>
+<toast $launchAttr $scenAttr $durAttr>
   <visual>
     <binding template='ToastGeneric'>
       $iconXml
@@ -60,7 +61,7 @@ try {
 "@
     } else {
         $toastXml = @"
-<toast launch='$LaunchUrl' activationType='protocol' $scenAttr $durAttr>
+<toast $launchAttr $scenAttr $durAttr>
   <visual>
     <binding template='ToastGeneric'>
       $iconXml

@@ -69,8 +69,13 @@ except:
 _dir="$(dirname "$0")"
 HOOKS_WIN=$(cygpath -w "$_dir" 2>/dev/null || echo "$_dir" | sed 's|/\([A-Za-z]\)/|\1:/|;s|/|\\|g')
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden \
-  -File "$HOOKS_WIN\\save-tab.ps1" -Session "$WT_SESSION"
+if [ -n "$WT_SESSION" ]; then
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden \
+    -File "$HOOKS_WIN\\save-tab.ps1" -Session "$WT_SESSION"
+  LAUNCH_URL="claude-code://focus?s=$WT_SESSION"
+else
+  LAUNCH_URL=""
+fi
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden \
   -File "$HOOKS_WIN\\notify.ps1" \
@@ -78,4 +83,4 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden \
   -MessageFile "$TEMP\\claude-notify-msg.txt" \
   -AttributionFile "$TEMP\\claude-notify-attr.txt" \
   -Duration "long" \
-  -LaunchUrl "claude-code://focus?s=$WT_SESSION"
+  -LaunchUrl "$LAUNCH_URL"
